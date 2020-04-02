@@ -1,0 +1,27 @@
+# exclude: |
+#   (?x)(
+#     ^config/|
+#     .*/migrations/
+#   )
+repos:
+  - repo: https://github.com/asottile/seed-isort-config
+    rev: v1.9.3
+    hooks:
+      - id: seed-isort-config
+        language_version: python3.8
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v4.3.21
+    hooks:
+      - id: isort
+        args: [-rc]
+        language_version: python3.8
+  - repo: https://github.com/ambv/black
+    rev: stable
+    hooks:
+      - id: black
+        language_version: python3.8
+        args: [--line-length=100, --skip-string-normalization]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v1.2.3
+    hooks:
+      - id: flake8
