@@ -1,9 +1,13 @@
 [tool.poetry]
 name = "starlette-graphql"
-version = "0.0.1"
+version = "0.0.2"
 description = "Starlette graphql extension."
 authors = ["syfun <sunyu418@gmail.com>"]
 license = "MIT"
+
+packages = [
+    { include = "stargql" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"

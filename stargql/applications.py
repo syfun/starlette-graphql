@@ -25,7 +25,8 @@ class GraphQL(Starlette):
         schema_file: str = None,
         playground: bool = True,
         debug: bool = False,
-        routes: typing.List[BaseRoute] = None
+        routes: typing.List[BaseRoute] = None,
+        **kwargs,
     ):
         routes = routes or []
         if type_defs:
@@ -42,7 +43,7 @@ class GraphQL(Starlette):
                 WebSocketRoute('/graphql/', Subscription(self.schema)),
             ]
         )
-        super().__init__(debug=debug, routes=routes)
+        super().__init__(debug=debug, routes=routes, **kwargs)
 
 
 class ASGIApp:
