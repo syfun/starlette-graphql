@@ -12,7 +12,7 @@ from starlette.types import Receive, Scope, Send
 
 from gql.build_schema import build_schema, build_schema_from_file
 from gql.playground import PLAYGROUND_HTML
-from gql.resolver import register_resolvers
+from gql.resolver import register_resolvers, default_field_resolver
 from gql.utils import place_files_in_operations
 from .subscribe import Subscription
 
@@ -113,6 +113,7 @@ class ASGIApp:
             variable_values=variables,
             operation_name=operation_name,
             context_value=context,
+            field_resolver=default_field_resolver,
         )
         error_data = [format_error(err) for err in result.errors] if result.errors else None
         response_data = {'data': result.data, 'errors': error_data}
