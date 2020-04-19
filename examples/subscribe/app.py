@@ -78,4 +78,4 @@ app = GraphQL(type_defs=type_defs)
 
 
 if __name__ == '__main__':
-    uvicorn.run(app, port=8080, debug=True)
+    uvicorn.run(app, port=8080)

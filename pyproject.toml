@@ -12,6 +12,8 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.7"
 python-gql = "*"
+starlette = "^0.13.3"
+typing_extensions = { version =  "^3.7.4", python = "< 3.8" }
 
 [tool.poetry.dev-dependencies]
 

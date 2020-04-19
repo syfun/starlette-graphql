@@ -1,0 +1,73 @@
+[[package]]
+category = "main"
+description = "Composable command line interface toolkit"
+name = "click"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+version = "7.1.1"
+
+[[package]]
+category = "main"
+description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
+name = "graphql-core"
+optional = false
+python-versions = ">=3.6,<4"
+version = "3.1.0"
+
+[[package]]
+category = "main"
+description = "Python schema-first and auto-generate class graphql server"
+name = "python-gql"
+optional = false
+python-versions = ">=3.7,<4.0"
+version = "0.0.7"
+
+[package.dependencies]
+click = ">=7,<8"
+graphql-core = ">=3,<4"
+
+[[package]]
+category = "main"
+description = "The little ASGI library that shines."
+name = "starlette"
+optional = false
+python-versions = ">=3.6"
+version = "0.13.3"
+
+[package.extras]
+full = ["aiofiles", "graphene", "itsdangerous", "jinja2", "python-multipart", "pyyaml", "requests", "ujson"]
+
+[[package]]
+category = "main"
+description = "Backported and Experimental Type Hints for Python 3.5+"
+name = "typing-extensions"
+optional = false
+python-versions = "*"
+version = "3.7.4.2"
+
+[metadata]
+content-hash = "7d2ce0b9af8343f1b45765e8b4992d416946aef290e10dda57f9f73076fc2b8e"
+python-versions = "^3.7"
+
+[metadata.files]
+click = [
+    {file = "click-7.1.1-py2.py3-none-any.whl", hash = "sha256:e345d143d80bf5ee7534056164e5e112ea5e22716bbb1ce727941f4c8b471b9a"},
+    {file = "click-7.1.1.tar.gz", hash = "sha256:8a18b4ea89d8820c5d0c7da8a64b2c324b4dabb695804dbfea19b9be9d88c0cc"},
+]
+graphql-core = [
+    {file = "graphql-core-3.1.0.tar.gz", hash = "sha256:d43cf1f149772c7014656d4bc4c512278a16722e80e4be2daf99894ffef871db"},
+    {file = "graphql_core-3.1.0-py3-none-any.whl", hash = "sha256:b654666330c46d6a98405a542e9fde0a499916428cbc11da51eb82be37ef1e05"},
+]
+python-gql = [
+    {file = "python-gql-0.0.7.tar.gz", hash = "sha256:5eb16d20d3104e1716ae6b80b7943f7a7a263a9dfc36afec1d90969323f6df2c"},
+    {file = "python_gql-0.0.7-py3-none-any.whl", hash = "sha256:34dd2d7434dc98d9a713be57a1bcc1e072c790b8b101ead85855fd592be13378"},
+]
+starlette = [
+    {file = "starlette-0.13.3-py3-none-any.whl", hash = "sha256:b316d53119813d12fa1d02ae80ef11a71ff603ff10abb143bd4aaadb59d03dd9"},
+    {file = "starlette-0.13.3.tar.gz", hash = "sha256:e15689e130a358c5cb220b9aad1e7bcb8052504c321235dab431f065c77f010d"},
+]
+typing-extensions = [
+    {file = "typing_extensions-3.7.4.2-py2-none-any.whl", hash = "sha256:f8d2bd89d25bc39dabe7d23df520442fa1d8969b82544370e03d88b5a591c392"},
+    {file = "typing_extensions-3.7.4.2-py3-none-any.whl", hash = "sha256:6e95524d8a547a91e08f404ae485bbb71962de46967e1b71a0cb89af24e761c5"},
+    {file = "typing_extensions-3.7.4.2.tar.gz", hash = "sha256:79ee589a3caca649a9bfd2a8de4709837400dfa00b6cc81962a1e6a1815969ae"},
+]

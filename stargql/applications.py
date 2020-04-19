@@ -37,12 +37,17 @@ class GraphQL(Starlette):
             raise Exception('Must provide type def string or file.')
         register_resolvers(self.schema)
 
+        subscription = Subscription(self.schema)
         routes.extend(
             [
                 Route('/graphql/', ASGIApp(self.schema, playground=playground)),
-                WebSocketRoute('/graphql/', Subscription(self.schema)),
+                WebSocketRoute('/graphql/', subscription),
             ]
         )
+        if 'on_shutdown' in kwargs:
+            kwargs['on_shutdown'] = kwargs['on_shutdown'].append(subscription.shutdown)
+        else:
+            kwargs['on_shutdown'] = [subscription.shutdown]
         super().__init__(debug=debug, routes=routes, **kwargs)
 
 

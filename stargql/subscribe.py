@@ -1,7 +1,7 @@
 import inspect
 import json
 from dataclasses import dataclass
-from typing import Dict, Sequence, Any, AsyncIterator
+from typing import Dict, Sequence, Any, AsyncIterator, List
 
 from gql.subscribe import PROTOCOL, MessageType, OperationMessage
 from graphql import ExecutionResult, GraphQLError, GraphQLSchema, format_error, parse, subscribe
@@ -27,23 +27,39 @@ class ConnectionContext:
 class Subscription:
     schema: GraphQLSchema
     keep_alive: bool
+    sockets: Dict[int, WebSocket]
 
     def __init__(self, schema: GraphQLSchema, keep_alive: bool = False) -> None:
         self.schema = schema
         self.keep_alive = keep_alive
+        self.sockets = {}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         socket = WebSocket(scope, receive=receive, send=send)
-        await socket.accept(PROTOCOL)
+        await self.on_connect(socket)
 
         context = ConnectionContext(socket=socket, operations={})
         await self.on_message(context)
+
+    async def shutdown(self):
+        print('shutdown websocket')
+        for socket in self.sockets.values():
+            await socket.close()
+
+    async def on_connect(self, socket: WebSocket) -> None:
+        await socket.accept(PROTOCOL)
+        self.sockets[id(socket)] = socket
+
+    async def on_disconnect(self, socket: WebSocket, close_code: int) -> None:
+        await socket.close(close_code)
+        self.sockets.pop(id(socket))
 
     async def on_message(self, context: ConnectionContext) -> None:
         close_code = status.WS_1000_NORMAL_CLOSURE
         try:
             while True:
                 message = await context.socket.receive()
+                print(message)
                 if message["type"] == "websocket.receive":
                     await self.dispatch(context, message)
                 elif message["type"] == "websocket.disconnect":
@@ -51,9 +67,9 @@ class Subscription:
                     break
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
-            raise exc
+            raise exc from None
         finally:
-            await context.socket.close(close_code)
+            await self.on_disconnect(context.socket, close_code)
 
     async def unsubscribe(self, context: ConnectionContext, op_id: str) -> None:
         if op_id not in context.operations:
