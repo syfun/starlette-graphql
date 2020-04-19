@@ -1,9 +1,10 @@
 import asyncio
 
 import uvicorn
+from gql import gql, query, subscribe, mutate
 
-from gql import gql, query, subscribe
 from stargql import GraphQL
+from stargql.pubsub import PubSub
 
 type_defs = gql(
     """
@@ -25,11 +26,6 @@ type_defs = gql(
   }
 """
 )
-
-
-@query
-def posts(parent, info):
-    return [{'author': 'Jack', 'comment': 'Good!'}]
 
 
 class Ticker:
@@ -59,12 +55,27 @@ async def ticker(delay, to):
         yield {'postAdded': {'author': 'Jack', 'comment': 'Good'}}
 
 
+pubsub = PubSub()
+
+
+@query
+def posts(parent, info):
+    return [{'author': 'Jack', 'comment': 'Good!'}]
+
+
 @subscribe
 async def post_added(parent, info, *args):
-    return Ticker(5)
+    return pubsub.async_iterator('POST_ADDED')
+
+
+@mutate
+async def add_post(parent, info, **kwargs):
+    await pubsub.publish('POST_ADDED', {'postAdded': kwargs})
+    return kwargs
 
 
 app = GraphQL(type_defs=type_defs)
 
+
 if __name__ == '__main__':
-    uvicorn.run(app, port=8080)
+    uvicorn.run(app, port=8080, debug=True)
