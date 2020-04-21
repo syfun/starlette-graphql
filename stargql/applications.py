@@ -1,6 +1,10 @@
 import json
 import typing
 
+from gql.build_schema import build_schema, build_schema_from_file
+from gql.playground import PLAYGROUND_HTML
+from gql.resolver import register_resolvers, default_field_resolver
+from gql.utils import place_files_in_operations
 from graphql import GraphQLSchema, format_error, graphql
 from starlette import status
 from starlette.applications import Starlette
@@ -10,11 +14,7 @@ from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, R
 from starlette.routing import BaseRoute, Route, WebSocketRoute
 from starlette.types import Receive, Scope, Send
 
-from gql.build_schema import build_schema, build_schema_from_file
-from gql.playground import PLAYGROUND_HTML
-from gql.resolver import register_resolvers, default_field_resolver
-from gql.utils import place_files_in_operations
-from .subscribe import Subscription
+from .subscription import Subscription
 
 
 class GraphQL(Starlette):
@@ -26,6 +26,8 @@ class GraphQL(Starlette):
         playground: bool = True,
         debug: bool = False,
         routes: typing.List[BaseRoute] = None,
+        path: str = '/',
+        subscription_path: str = '/',
         **kwargs,
     ):
         routes = routes or []
@@ -37,17 +39,12 @@ class GraphQL(Starlette):
             raise Exception('Must provide type def string or file.')
         register_resolvers(self.schema)
 
-        subscription = Subscription(self.schema)
         routes.extend(
             [
-                Route('/graphql/', ASGIApp(self.schema, playground=playground)),
-                WebSocketRoute('/graphql/', subscription),
+                Route(path, ASGIApp(self.schema, playground=playground)),
+                WebSocketRoute(subscription_path, Subscription(self.schema)),
             ]
         )
-        if 'on_shutdown' in kwargs:
-            kwargs['on_shutdown'] = kwargs['on_shutdown'].append(subscription.shutdown)
-        else:
-            kwargs['on_shutdown'] = [subscription.shutdown]
         super().__init__(debug=debug, routes=routes, **kwargs)
 
 

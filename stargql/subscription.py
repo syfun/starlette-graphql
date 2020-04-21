@@ -1,7 +1,8 @@
+import asyncio
 import inspect
 import json
 from dataclasses import dataclass
-from typing import Dict, Sequence, Any, AsyncIterator, List
+from typing import Dict, Sequence, Any, AsyncIterator
 
 from gql.subscribe import PROTOCOL, MessageType, OperationMessage
 from graphql import ExecutionResult, GraphQLError, GraphQLSchema, format_error, parse, subscribe
@@ -27,12 +28,10 @@ class ConnectionContext:
 class Subscription:
     schema: GraphQLSchema
     keep_alive: bool
-    sockets: Dict[int, WebSocket]
 
     def __init__(self, schema: GraphQLSchema, keep_alive: bool = False) -> None:
         self.schema = schema
         self.keep_alive = keep_alive
-        self.sockets = {}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         socket = WebSocket(scope, receive=receive, send=send)
@@ -41,29 +40,24 @@ class Subscription:
         context = ConnectionContext(socket=socket, operations={})
         await self.on_message(context)
 
-    async def shutdown(self):
-        print('shutdown websocket')
-        for socket in self.sockets.values():
-            await socket.close()
-
     async def on_connect(self, socket: WebSocket) -> None:
         await socket.accept(PROTOCOL)
-        self.sockets[id(socket)] = socket
 
     async def on_disconnect(self, socket: WebSocket, close_code: int) -> None:
         await socket.close(close_code)
-        self.sockets.pop(id(socket))
 
     async def on_message(self, context: ConnectionContext) -> None:
         close_code = status.WS_1000_NORMAL_CLOSURE
         try:
             while True:
                 message = await context.socket.receive()
-                print(message)
                 if message["type"] == "websocket.receive":
                     await self.dispatch(context, message)
                 elif message["type"] == "websocket.disconnect":
                     close_code = int(message.get("code", status.WS_1000_NORMAL_CLOSURE))
+                    # To fix shutdown server 1006 error.
+                    if close_code == 1006:
+                        close_code = status.WS_1000_NORMAL_CLOSURE
                     break
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
@@ -76,7 +70,7 @@ class Subscription:
             return
 
         op = context.operations[op_id]
-        close_func = getattr(op, 'close')
+        close_func = getattr(op, 'aclose')
         if inspect.isfunction(close_func):
             close_func()
         elif inspect.iscoroutinefunction(close_func):
@@ -117,10 +111,6 @@ class Subscription:
             await self.unsubscribe(context, op_id)
 
         payload = message.payload
-        # if not isinstance(payload, dict):
-        #     msg = 'invalid operation message payload, must be a dict'
-        #     await self.send_error(context, op_id, {'message': msg})
-
         try:
             doc = parse(payload.query)
         except Exception as exc:
@@ -143,10 +133,13 @@ class Subscription:
 
         context.operations[op_id] = result_or_iterator
 
-        async for result in result_or_iterator:
-            await self.send_execution_result(context, op_id, result)
+        async def iter_result():
+            async for result in result_or_iterator:
+                await self.send_execution_result(context, op_id, result)
 
-        await self.send_message(context, MessageType.GQL_COMPLETE, op_id=op_id)
+            await self.send_message(context, MessageType.GQL_COMPLETE, op_id=op_id)
+
+        asyncio.create_task(iter_result())
 
     async def send_execution_result(
         self, context: ConnectionContext, op_id: str, result: ExecutionResult
