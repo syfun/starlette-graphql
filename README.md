@@ -30,20 +30,6 @@ Use [uvicorn](https://www.uvicorn.org) to run app.
 
 `uvicorn app:app --reload`
 
-## Use `gqlgen` command.
-
-### generate types
-
-`gqlgen  types --file ./schema.graphql --kind=dataclass`
-
-### generator resolver
-
-`gqlgen field-resolver -f --file ./schema.graphql Query hello`
-
-### help info
-
-For more info about `gqlgen`, please use `gqlgen -h`
-
 ## Upload File
 
 ```python

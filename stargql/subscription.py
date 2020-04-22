@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Sequence, Any, AsyncIterator
 
-from gql.subscribe import PROTOCOL, MessageType, OperationMessage
+from gql.subscription import PROTOCOL, MessageType, OperationMessage
 from graphql import ExecutionResult, GraphQLError, GraphQLSchema, format_error, parse, subscribe
 from starlette import status
 from starlette.types import Receive, Scope, Send

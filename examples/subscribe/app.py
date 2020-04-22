@@ -5,7 +5,7 @@ import uvicorn
 from gql import gql, subscribe, mutate
 
 from stargql import GraphQL
-from redis_pubsub import RedisPubSub
+from gql_subscriptions.pubsubs.redis import RedisPubSub
 
 # from gql.pubsub import PubSub
 
@@ -57,7 +57,7 @@ def filter_post(payload, info, **kwargs):
 
 
 @subscribe
-@with_filter(filter_post)
+# @with_filter(filter_post)
 async def post_added(parent, info, **kwargs):
     return pubsub.async_iterator('POST_ADDED')
 

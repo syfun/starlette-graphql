@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "starlette-graphql"
-version = "0.0.6"
+version = "0.0.7"
 description = "Starlette graphql extension."
 authors = ["syfun <sunyu418@gmail.com>"]
 license = "MIT"
