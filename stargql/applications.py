@@ -3,7 +3,7 @@ import typing
 
 from gql.build_schema import build_schema, build_schema_from_file
 from gql.playground import PLAYGROUND_HTML
-from gql.resolver import register_resolvers, default_field_resolver
+from gql.resolver import default_field_resolver, register_resolvers
 from gql.utils import place_files_in_operations
 from graphql import GraphQLSchema, format_error, graphql
 from starlette import status
@@ -28,6 +28,7 @@ class GraphQL(Starlette):
         routes: typing.List[BaseRoute] = None,
         path: str = '/',
         subscription_path: str = '/',
+        subscription_authenticate: typing.Awaitable = None,
         **kwargs,
     ):
         routes = routes or []
@@ -42,7 +43,7 @@ class GraphQL(Starlette):
         routes.extend(
             [
                 Route(path, ASGIApp(self.schema, playground=playground)),
-                WebSocketRoute(subscription_path, Subscription(self.schema)),
+                WebSocketRoute(subscription_path, Subscription(self.schema, authenticate=subscription_authenticate)),
             ]
         )
         super().__init__(debug=debug, routes=routes, **kwargs)
@@ -84,27 +85,20 @@ class ASGIApp:
                     files_map = json.loads(form.get('map', '{}'))
                 except (TypeError, ValueError):
                     return PlainTextResponse(
-                        'operations or map sent invalid JSON',
-                        status_code=status.HTTP_400_BAD_REQUEST,
+                        'operations or map sent invalid JSON', status_code=status.HTTP_400_BAD_REQUEST,
                     )
                 data = place_files_in_operations(operations, files_map, form)
             else:
-                return PlainTextResponse(
-                    'Unsupported Media Type', status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                )
+                return PlainTextResponse('Unsupported Media Type', status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,)
         else:
-            return PlainTextResponse(
-                'Method Not Allowed', status_code=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
+            return PlainTextResponse('Method Not Allowed', status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         try:
             query = data['query']
             variables = data.get('variables')
             operation_name = data.get('operationName')
         except KeyError:
-            return PlainTextResponse(
-                'No GraphQL query found in the request', status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            return PlainTextResponse('No GraphQL query found in the request', status_code=status.HTTP_400_BAD_REQUEST,)
 
         background = BackgroundTasks()
         context = {'request': request, 'background': background}
