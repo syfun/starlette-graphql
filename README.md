@@ -4,7 +4,7 @@ The starlette GraphQL implement, which  support query, mutate and subscription. 
 
 ## Requirement
 
-Python 3.7_
+Python 3.7+
 
 ## Installation
 
