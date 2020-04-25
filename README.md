@@ -1,6 +1,6 @@
 # Starlette GraphQL
 
-The starlette GraphQL implement, which  support query, mutate and subscription. Based on [python-gq](https://github.com/syfun/python-gql).
+The starlette GraphQL implement, which  support query, mutate and subscription. Based on [python-gql](https://github.com/syfun/python-gql).
 
 ## Requirement
 
