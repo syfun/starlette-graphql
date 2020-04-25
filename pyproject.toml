@@ -4,6 +4,7 @@ version = "0.0.7"
 description = "The starlette GraphQL implement, which  support query, mutate and subscription."
 authors = ["syfun <sunyu418@gmail.com>"]
 license = "MIT"
+readme = "README.md"
 homepage = "https://github.com/syfun/starlette-graphql"
 
 packages = [
