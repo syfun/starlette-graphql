@@ -1,10 +1,17 @@
-# Starlette graphql
+# Starlette GraphQL
 
-Starlette graphql extension.
+The starlette GraphQL implement, which  support query, mutate and subscription. Based on [python-gq](https://github.com/syfun/python-gql).
 
-# Usage
+## Requirement
 
-## Simple
+Python 3.7_
+
+## Installation
+
+`pip install starlette-graphql`
+
+
+## Getting started
 
 ```python
 # app.py
@@ -72,3 +79,7 @@ if __name__ == '__main__':
     uvicorn.run(app, port=8080)
 
 ```
+
+## Subscription
+
+For more about subscription, please see [gql-subscriptions](https://github.com/syfun/starlette-graphql).

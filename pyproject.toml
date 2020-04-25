@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "starlette-graphql"
 version = "0.0.7"
-description = "Starlette graphql extension."
+description = "The starlette GraphQL implement, which  support query, mutate and subscription."
 authors = ["syfun <sunyu418@gmail.com>"]
 license = "MIT"
+homepage = "https://github.com/syfun/starlette-graphql"
 
 packages = [
     { include = "stargql" }

@@ -3,9 +3,8 @@ from typing import Callable, Awaitable, AsyncIterator, Any, Dict
 
 import uvicorn
 from gql import gql, subscribe, mutate
-
-from stargql import GraphQL
 from gql_subscriptions.pubsubs.redis import RedisPubSub
+from stargql import GraphQL
 
 # from gql.pubsub import PubSub
 
