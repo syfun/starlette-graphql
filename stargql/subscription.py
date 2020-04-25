@@ -1,11 +1,13 @@
+import asyncio
 import inspect
 import json
 from dataclasses import dataclass
-from typing import Dict, Sequence, Any, AsyncIterator
+from typing import Any, AsyncIterator, Awaitable, Dict, Sequence
 
-from gql.subscribe import PROTOCOL, MessageType, OperationMessage
+from gql.subscription import PROTOCOL, MessageType, OperationMessage
 from graphql import ExecutionResult, GraphQLError, GraphQLSchema, format_error, parse, subscribe
 from starlette import status
+from starlette.authentication import BaseUser
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import Message, WebSocket
 
@@ -22,22 +24,31 @@ def create_async_iterator(seq: Sequence[Any]):
 class ConnectionContext:
     socket: WebSocket
     operations: Dict[str, AsyncIterator[ExecutionResult]]
+    user: BaseUser = None
 
 
 class Subscription:
     schema: GraphQLSchema
     keep_alive: bool
+    authenticate: Awaitable
 
-    def __init__(self, schema: GraphQLSchema, keep_alive: bool = False) -> None:
+    def __init__(self, schema: GraphQLSchema, keep_alive: bool = False, authenticate: Awaitable = None) -> None:
         self.schema = schema
         self.keep_alive = keep_alive
+        self.authenticate = authenticate
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         socket = WebSocket(scope, receive=receive, send=send)
-        await socket.accept(PROTOCOL)
+        await self.on_connect(socket)
 
         context = ConnectionContext(socket=socket, operations={})
         await self.on_message(context)
+
+    async def on_connect(self, socket: WebSocket) -> None:
+        await socket.accept(PROTOCOL)
+
+    async def on_disconnect(self, socket: WebSocket, close_code: int) -> None:
+        await socket.close(close_code)
 
     async def on_message(self, context: ConnectionContext) -> None:
         close_code = status.WS_1000_NORMAL_CLOSURE
@@ -48,19 +59,22 @@ class Subscription:
                     await self.dispatch(context, message)
                 elif message["type"] == "websocket.disconnect":
                     close_code = int(message.get("code", status.WS_1000_NORMAL_CLOSURE))
+                    # To fix shutdown server 1006 error.
+                    if close_code == 1006:
+                        close_code = status.WS_1000_NORMAL_CLOSURE
                     break
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
-            raise exc
+            raise exc from None
         finally:
-            await context.socket.close(close_code)
+            await self.on_disconnect(context.socket, close_code)
 
     async def unsubscribe(self, context: ConnectionContext, op_id: str) -> None:
         if op_id not in context.operations:
             return
 
         op = context.operations[op_id]
-        close_func = getattr(op, 'close')
+        close_func = getattr(op, 'aclose')
         if inspect.isfunction(close_func):
             close_func()
         elif inspect.iscoroutinefunction(close_func):
@@ -76,7 +90,7 @@ class Subscription:
         message = await self.decode(context, data)
         op_id = message.id
         if message.type == MessageType.GQL_CONNECTION_INIT:
-            await self.init(context)
+            await self.init(context, message)
         elif message.type == MessageType.GQL_CONNECTION_TERMINATE:
             await context.socket.close(code=status.WS_1000_NORMAL_CLOSURE)
         elif message.type == MessageType.GQL_START:
@@ -90,28 +104,37 @@ class Subscription:
         else:
             await self.send_error(context, op_id, {'message': 'Invalid message type!'})
 
-    async def init(self, context: ConnectionContext) -> None:
+    async def init(self, context: ConnectionContext, message: OperationMessage) -> None:
+        if self.authenticate:
+            context.user = user = await self.authenticate(message.payload)
+            if not user.is_authenticated:
+                await self.send_error(
+                    context,
+                    message.id,
+                    {'message': 'Invalid auth credentials.'},
+                    error_type=MessageType.GQL_CONNECTION_ERROR,
+                )
+                return
+
         await self.send_message(context, MessageType.GQL_CONNECTION_ACK)
         # TODO: to support keep_alive
 
     async def start(self, context: ConnectionContext, message: OperationMessage) -> None:
+        if context.user and not context.user.is_authenticated:
+            await self.send_error(context, message.id, {'message': 'Invalid auth credentials.'})
+            return
+
         op_id = message.id
         # if we already have a subscription with this id, unsubscribe from it first
         if op_id in context.operations:
             await self.unsubscribe(context, op_id)
 
         payload = message.payload
-        # if not isinstance(payload, dict):
-        #     msg = 'invalid operation message payload, must be a dict'
-        #     await self.send_error(context, op_id, {'message': msg})
-
         try:
             doc = parse(payload.query)
         except Exception as exc:
             if isinstance(exc, GraphQLError):
-                await self.send_execution_result(
-                    context, op_id, ExecutionResult(data=None, errors=[exc])
-                )
+                await self.send_execution_result(context, op_id, ExecutionResult(data=None, errors=[exc]))
             else:
                 await self.send_error(context, op_id, {'message': str(exc)})
             return
@@ -120,6 +143,7 @@ class Subscription:
             self.schema,
             doc,
             variable_values=payload.variables,
+            context_value=context,
             operation_name=payload.operation_name,
         )
         if isinstance(result_or_iterator, ExecutionResult):
@@ -127,14 +151,15 @@ class Subscription:
 
         context.operations[op_id] = result_or_iterator
 
-        async for result in result_or_iterator:
-            await self.send_execution_result(context, op_id, result)
+        async def iter_result():
+            async for result in result_or_iterator:
+                await self.send_execution_result(context, op_id, result)
 
-        await self.send_message(context, MessageType.GQL_COMPLETE, op_id=op_id)
+            await self.send_message(context, MessageType.GQL_COMPLETE, op_id=op_id)
 
-    async def send_execution_result(
-        self, context: ConnectionContext, op_id: str, result: ExecutionResult
-    ) -> None:
+        asyncio.create_task(iter_result())
+
+    async def send_execution_result(self, context: ConnectionContext, op_id: str, result: ExecutionResult) -> None:
         payload = {
             'data': result.data,
             'errors': [format_error(error) for error in result.errors] if result.errors else None,
@@ -144,11 +169,7 @@ class Subscription:
         )
 
     async def send_message(
-        self,
-        context: ConnectionContext,
-        message_type: MessageType,
-        op_id: str = None,
-        payload: dict = None,
+        self, context: ConnectionContext, message_type: MessageType, op_id: str = None, payload: dict = None,
     ) -> None:
         data = {'type': message_type.value}
         if op_id:
@@ -179,6 +200,4 @@ class Subscription:
         try:
             return OperationMessage.build(json.loads(text))
         except json.decoder.JSONDecodeError as exc:
-            await self.send_error(
-                context, None, {'message': str(exc)}, MessageType.GQL_CONNECTION_ERROR
-            )
+            await self.send_error(context, None, {'message': str(exc)}, MessageType.GQL_CONNECTION_ERROR)

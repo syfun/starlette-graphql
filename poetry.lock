@@ -1,0 +1,65 @@
+[[package]]
+category = "main"
+description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
+name = "graphql-core"
+optional = false
+python-versions = ">=3.6,<4"
+version = "3.1.0"
+
+[[package]]
+category = "main"
+description = "Python schema-first and auto-generate class graphql server"
+name = "python-gql"
+optional = false
+python-versions = ">=3.7,<4.0"
+version = "0.0.8"
+
+[package.dependencies]
+graphql-core = ">=3,<4"
+
+[package.dependencies.typing_extensions]
+python = "<3.8"
+version = ">=3.7.4,<4.0.0"
+
+[[package]]
+category = "main"
+description = "The little ASGI library that shines."
+name = "starlette"
+optional = false
+python-versions = ">=3.6"
+version = "0.13.3"
+
+[package.extras]
+full = ["aiofiles", "graphene", "itsdangerous", "jinja2", "python-multipart", "pyyaml", "requests", "ujson"]
+
+[[package]]
+category = "main"
+description = "Backported and Experimental Type Hints for Python 3.5+"
+marker = "python_version < \"3.8\""
+name = "typing-extensions"
+optional = false
+python-versions = "*"
+version = "3.7.4.2"
+
+[metadata]
+content-hash = "5abb146c0a4193e7cc195cabdb82779cdb60d8f695f39c2ce4394cb26e17f956"
+python-versions = "^3.7"
+
+[metadata.files]
+graphql-core = [
+    {file = "graphql-core-3.1.0.tar.gz", hash = "sha256:d43cf1f149772c7014656d4bc4c512278a16722e80e4be2daf99894ffef871db"},
+    {file = "graphql_core-3.1.0-py3-none-any.whl", hash = "sha256:b654666330c46d6a98405a542e9fde0a499916428cbc11da51eb82be37ef1e05"},
+]
+python-gql = [
+    {file = "python-gql-0.0.8.tar.gz", hash = "sha256:f86774e41ad747d09651e94cd834a831a8256f0f68addab0f1ed18d2c8dd0e41"},
+    {file = "python_gql-0.0.8-py3-none-any.whl", hash = "sha256:3a44c557c42c0fb0fcd6c9d427295bca181f0b6bf576c4c680dad26c18b190b1"},
+]
+starlette = [
+    {file = "starlette-0.13.3-py3-none-any.whl", hash = "sha256:b316d53119813d12fa1d02ae80ef11a71ff603ff10abb143bd4aaadb59d03dd9"},
+    {file = "starlette-0.13.3.tar.gz", hash = "sha256:e15689e130a358c5cb220b9aad1e7bcb8052504c321235dab431f065c77f010d"},
+]
+typing-extensions = [
+    {file = "typing_extensions-3.7.4.2-py2-none-any.whl", hash = "sha256:f8d2bd89d25bc39dabe7d23df520442fa1d8969b82544370e03d88b5a591c392"},
+    {file = "typing_extensions-3.7.4.2-py3-none-any.whl", hash = "sha256:6e95524d8a547a91e08f404ae485bbb71962de46967e1b71a0cb89af24e761c5"},
+    {file = "typing_extensions-3.7.4.2.tar.gz", hash = "sha256:79ee589a3caca649a9bfd2a8de4709837400dfa00b6cc81962a1e6a1815969ae"},
+]

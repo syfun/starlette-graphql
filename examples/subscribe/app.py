@@ -1,15 +1,17 @@
-import asyncio
+from functools import wraps
+from typing import Callable, Awaitable, AsyncIterator, Any, Dict
 
 import uvicorn
-from gql import gql, query, subscribe, mutate
-
+from gql import gql, subscribe, mutate
+from gql_subscriptions.pubsubs.redis import RedisPubSub
 from stargql import GraphQL
-from stargql.pubsub import PubSub
+
+# from gql.pubsub import PubSub
 
 type_defs = gql(
     """
   type Subscription {
-    postAdded: Post
+    postAdded(author: String): Post
   }
 
   type Query {
@@ -27,44 +29,35 @@ type_defs = gql(
 """
 )
 
+pubsub = RedisPubSub('redis://localhost:6379')
 
-class Ticker:
-    def __init__(self, delay, is_stop=False):
-        self.delay = delay
-        self.is_stop = is_stop
-
-    def __aiter__(self):
-        return self
-
-    def stop(self):
-        self.is_stop = True
-
-    async def __anext__(self):
-        if self.is_stop:
-            raise StopAsyncIteration()
-        await asyncio.sleep(self.delay)
-        if self.is_stop:
-            raise StopAsyncIteration()
-        return {'postAdded': {'author': 'Jack', 'comment': 'Good'}}
+ResolverFn = Callable[[Any, Any, Dict[str, Any]], Awaitable[AsyncIterator]]
+FilterFn = Callable[[Any, Any, Dict[str, Any]], bool]
 
 
-async def ticker(delay, to):
-    """Yield numbers from 0 to `to` every `delay` seconds."""
-    for i in range(to):
-        await asyncio.sleep(delay)
-        yield {'postAdded': {'author': 'Jack', 'comment': 'Good'}}
+def with_filter(filter_fn: FilterFn,) -> Callable[[ResolverFn], ResolverFn]:
+    def wrap(func: ResolverFn) -> ResolverFn:
+        @wraps(func)
+        async def _wrap(parent: Any, info: Any, **kwargs: Any) -> Awaitable[AsyncIterator]:
+            iterator = await func(parent, info, **kwargs)
+            async for result in iterator:
+                if filter_fn(result, info, **kwargs):
+                    yield result
+
+        return _wrap
+
+    return wrap
 
 
-pubsub = PubSub()
-
-
-@query
-def posts(parent, info):
-    return [{'author': 'Jack', 'comment': 'Good!'}]
+def filter_post(payload, info, **kwargs):
+    if 'author' not in kwargs:
+        return False
+    return payload['postAdded'].get('author') == kwargs['author']
 
 
 @subscribe
-async def post_added(parent, info, *args):
+# @with_filter(filter_post)
+async def post_added(parent, info, **kwargs):
     return pubsub.async_iterator('POST_ADDED')
 
 
@@ -74,7 +67,11 @@ async def add_post(parent, info, **kwargs):
     return kwargs
 
 
-app = GraphQL(type_defs=type_defs)
+async def shutdown():
+    await pubsub.disconnect()
+
+
+app = GraphQL(type_defs=type_defs, on_shutdown=[shutdown])
 
 
 if __name__ == '__main__':
