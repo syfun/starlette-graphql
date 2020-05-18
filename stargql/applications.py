@@ -6,7 +6,7 @@ from gql.build_schema import build_schema, build_schema_from_file
 from gql.playground import PLAYGROUND_HTML
 from gql.resolver import default_field_resolver, register_resolvers
 from gql.utils import place_files_in_operations
-from graphql import GraphQLError, GraphQLSchema, graphql
+from graphql import GraphQLError, GraphQLSchema, graphql, Middleware
 from starlette import status
 from starlette.applications import Starlette
 from starlette.background import BackgroundTasks
@@ -33,6 +33,8 @@ class GraphQL(Starlette):
         subscription_path: str = '/',
         subscription_authenticate: typing.Awaitable = None,
         error_formater: ERROR_FORMATER = None,
+        middleware: Middleware = None,
+        context: dict = None,
         **kwargs,
     ):
         routes = routes or []
@@ -53,6 +55,8 @@ class GraphQL(Starlette):
                         debug=debug,
                         playground=playground,
                         error_formater=error_formater,
+                        middleware=middleware,
+                        context=context,
                     ),
                 ),
                 WebSocketRoute(
@@ -71,11 +75,15 @@ class ASGIApp:
         debug: bool = False,
         playground: bool = True,
         error_formater: ERROR_FORMATER = None,
+        middleware: Middleware = None,
+        context: dict = None,
     ) -> None:
         self.schema = schema
         self.playground = playground
         self.error_formater = self.format_error
         self.debug = debug
+        self.middleware = middleware
+        self.context = context or {}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive=receive, send=send)
@@ -150,15 +158,16 @@ class ASGIApp:
             )
 
         background = BackgroundTasks()
-        context = {'request': request, 'background': background}
+        self.context.update(request=request, background=background)
 
         result = await graphql(
             self.schema,
             query,
             variable_values=variables,
             operation_name=operation_name,
-            context_value=context,
+            context_value=self.context,
             field_resolver=default_field_resolver,
+            middleware=self.middleware,
         )
         error_data = [self.error_formater(err) for err in result.errors] if result.errors else None
         response_data = {'data': result.data, 'errors': error_data}
