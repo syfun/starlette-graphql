@@ -34,7 +34,7 @@ class GraphQL(Starlette):
         subscription_authenticate: typing.Awaitable = None,
         error_formater: ERROR_FORMATER = None,
         middleware: Middleware = None,
-        context: dict = None,
+        context_builder: typing.Callable = None,
         **kwargs,
     ):
         routes = routes or []
@@ -56,7 +56,7 @@ class GraphQL(Starlette):
                         playground=playground,
                         error_formater=error_formater,
                         middleware=middleware,
-                        context=context,
+                        context_builder=context_builder,
                     ),
                 ),
                 WebSocketRoute(
@@ -76,14 +76,14 @@ class ASGIApp:
         playground: bool = True,
         error_formater: ERROR_FORMATER = None,
         middleware: Middleware = None,
-        context: dict = None,
+        context_builder: typing.Callable = None,
     ) -> None:
         self.schema = schema
         self.playground = playground
         self.error_formater = self.format_error
         self.debug = debug
         self.middleware = middleware
-        self.context = context or {}
+        self.context_builder = context_builder
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope, receive=receive, send=send)
@@ -158,14 +158,15 @@ class ASGIApp:
             )
 
         background = BackgroundTasks()
-        self.context.update(request=request, background=background)
+        context = self.context_builder() if self.context_builder else {}
+        context.update(request=request, background=background)
 
         result = await graphql(
             self.schema,
             query,
             variable_values=variables,
             operation_name=operation_name,
-            context_value=self.context,
+            context_value=context,
             field_resolver=default_field_resolver,
             middleware=self.middleware,
         )
