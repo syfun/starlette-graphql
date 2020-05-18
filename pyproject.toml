@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "starlette-graphql"
-version = "0.1.1"
+version = "0.1.2"
 description = "The starlette GraphQL implement, which  support query, mutate and subscription."
 authors = ["syfun <sunyu418@gmail.com>"]
 license = "MIT"
