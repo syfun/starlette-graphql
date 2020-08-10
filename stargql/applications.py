@@ -33,7 +33,7 @@ class GraphQL(Starlette):
         subscription_path: str = '/',
         subscription_authenticate: typing.Awaitable = None,
         error_formater: ERROR_FORMATER = None,
-        middleware: Middleware = None,
+        graphql_middleware: Middleware = None,
         context_builder: typing.Callable = None,
         **kwargs,
     ):
@@ -55,7 +55,7 @@ class GraphQL(Starlette):
                         debug=debug,
                         playground=playground,
                         error_formater=error_formater,
-                        middleware=middleware,
+                        graphql_middleware=graphql_middleware,
                         context_builder=context_builder,
                     ),
                 ),
@@ -75,14 +75,14 @@ class ASGIApp:
         debug: bool = False,
         playground: bool = True,
         error_formater: ERROR_FORMATER = None,
-        middleware: Middleware = None,
+        graphql_middleware: Middleware = None,
         context_builder: typing.Callable = None,
     ) -> None:
         self.schema = schema
         self.playground = playground
         self.error_formater = self.format_error
         self.debug = debug
-        self.middleware = middleware
+        self.middleware = graphql_middleware
         self.context_builder = context_builder
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
