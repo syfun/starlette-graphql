@@ -1,7 +1,9 @@
 import uvicorn
 
-from gql import gql, reference_resolver
+from gql import gql, reference_resolver, query
 from stargql import GraphQL
+
+from helper import get_user_by_id, users
 
 type_defs = gql("""
   type Query {
@@ -10,22 +12,23 @@ type_defs = gql("""
 
   type User @key(fields: "id") {
     id: ID!
+    name: String
     username: String
   }
 
 """)
 
-users = {
-    '1': {'id': '1', 'username': 'Jack'},
-    '2': {'id': '2', 'username': 'Rose'}
-}
+@query('me')
+def get_me(_, info):
+    return users[0]
+
+
 @reference_resolver('User')
 def user_reference(_, info, representation):
-    return users.get(representation['id'])
-
+    return get_user_by_id(representation['id'])
 
 
 app = GraphQL(type_defs=type_defs, federation=True)
 
 if __name__ == '__main__':
-    uvicorn.run(app, port=8080)
+    uvicorn.run(app, port=8082)
