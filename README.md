@@ -83,3 +83,9 @@ if __name__ == '__main__':
 ## Subscription
 
 For more about subscription, please see [gql-subscriptions](https://github.com/syfun/starlette-graphql).
+
+## Apollo Federation
+
+[Example](https://github.com/syfun/starlette-graphql/tree/master/examples/federation)
+
+For more abount subscription, please see [Apollo Federation](https://www.apollographql.com/docs/apollo-server/federation/introduction/)

@@ -2,7 +2,7 @@ import json
 import traceback
 import typing
 
-from gql.build_schema import build_schema, build_schema_from_file
+from gql import make_schema, make_schema_from_file
 from gql.playground import PLAYGROUND_HTML
 from gql.resolver import default_field_resolver, register_resolvers
 from gql.utils import place_files_in_operations
@@ -23,9 +23,11 @@ ERROR_FORMATER = typing.Callable[[GraphQLError], typing.Dict[str, typing.Any]]
 class GraphQL(Starlette):
     def __init__(
         self,
+        schema: GraphQLSchema = None,
         *,
         type_defs: str = None,
         schema_file: str = None,
+        federation: bool = False,
         playground: bool = True,
         debug: bool = False,
         routes: typing.List[BaseRoute] = None,
@@ -38,10 +40,12 @@ class GraphQL(Starlette):
         **kwargs,
     ):
         routes = routes or []
-        if type_defs:
-            self.schema = build_schema(type_defs)
+        if schema:
+            self.schema = schema
+        elif type_defs:
+            self.schema = make_schema(type_defs, federation=federation)
         elif schema_file:
-            self.schema = build_schema_from_file(schema_file)
+            self.schema = make_schema_from_file(schema_file, federation=federation)
         else:
             raise Exception('Must provide type def string or file.')
         register_resolvers(self.schema)
