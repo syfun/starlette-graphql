@@ -48,7 +48,6 @@ class GraphQL(Starlette):
             self.schema = make_schema_from_file(schema_file, federation=federation)
         else:
             raise Exception('Must provide type def string or file.')
-        register_resolvers(self.schema)
 
         routes.extend(
             [
