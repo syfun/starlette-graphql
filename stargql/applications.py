@@ -2,11 +2,11 @@ import json
 import traceback
 import typing
 
-from gql import make_schema, make_schema_from_file
+from gql import make_schema, make_schema_from_file, MiddlewareManager, ExecutionContext
 from gql.playground import PLAYGROUND_HTML
-from gql.resolver import default_field_resolver, register_resolvers
+from gql.resolver import default_field_resolver
 from gql.utils import place_files_in_operations
-from graphql import GraphQLError, GraphQLSchema, graphql, Middleware
+from graphql import GraphQLError, GraphQLSchema, graphql
 from starlette import status
 from starlette.applications import Starlette
 from starlette.background import BackgroundTasks
@@ -35,7 +35,7 @@ class GraphQL(Starlette):
         subscription_path: str = '/',
         subscription_authenticate: typing.Awaitable = None,
         error_formater: ERROR_FORMATER = None,
-        graphql_middleware: Middleware = None,
+        graphql_middleware: typing.Union[tuple, list, typing.Dict[str, list]] = None,
         context_builder: typing.Callable = None,
         **kwargs,
     ):
@@ -78,14 +78,31 @@ class ASGIApp:
         debug: bool = False,
         playground: bool = True,
         error_formater: ERROR_FORMATER = None,
-        graphql_middleware: Middleware = None,
+        graphql_middleware: typing.Union[tuple, list, typing.Dict[str, list]] = None,
         context_builder: typing.Callable = None,
     ) -> None:
         self.schema = schema
         self.playground = playground
-        self.error_formater = self.format_error
+        self.error_formater = error_formater or self.format_error
         self.debug = debug
-        self.middleware = graphql_middleware
+        if not graphql_middleware:
+            self.middleware_manager = None
+        elif isinstance(graphql_middleware, (tuple, list)):
+            self.middleware_manager = MiddlewareManager(
+                {
+                    'Query': graphql_middleware,
+                    'Mutation': graphql_middleware,
+                    'Subscription': graphql_middleware,
+                }
+            )
+        elif isinstance(graphql_middleware, dict):
+            self.middleware_manager = MiddlewareManager(graphql_middleware)
+        else:
+            raise TypeError(
+                'GraphQL ASGIApp only accept graphql_middleware: tuple, list, dict,'
+                f'not {type(graphql_middleware)}'
+            )
+
         self.context_builder = context_builder
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -144,7 +161,8 @@ class ASGIApp:
                 data = place_files_in_operations(operations, files_map, form)
             else:
                 return PlainTextResponse(
-                    'Unsupported Media Type', status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                    'Unsupported Media Type',
+                    status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 )
         else:
             return PlainTextResponse(
@@ -157,7 +175,8 @@ class ASGIApp:
             operation_name = data.get('operationName')
         except KeyError:
             return PlainTextResponse(
-                'No GraphQL query found in the request', status_code=status.HTTP_400_BAD_REQUEST,
+                'No GraphQL query found in the request',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         background = BackgroundTasks()
@@ -171,7 +190,8 @@ class ASGIApp:
             operation_name=operation_name,
             context_value=context,
             field_resolver=default_field_resolver,
-            middleware=self.middleware,
+            middleware=self.middleware_manager,
+            execution_context_class=ExecutionContext,
         )
         error_data = [self.error_formater(err) for err in result.errors] if result.errors else None
         response_data = {'data': result.data, 'errors': error_data}
