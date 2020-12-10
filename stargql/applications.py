@@ -23,6 +23,7 @@ ERROR_FORMATER = typing.Callable[[GraphQLError], typing.Dict[str, typing.Any]]
 class GraphQL(Starlette):
     def __init__(
         self,
+
         schema: GraphQLSchema = None,
         *,
         type_defs: str = None,
@@ -36,6 +37,7 @@ class GraphQL(Starlette):
         subscription_authenticate: typing.Awaitable = None,
         error_formater: ERROR_FORMATER = None,
         graphql_middleware: typing.Union[tuple, list, typing.Dict[str, list]] = None,
+        graphql_middleware_exclude: typing.List[str] = None,
         context_builder: typing.Callable = None,
         **kwargs,
     ):
@@ -59,6 +61,7 @@ class GraphQL(Starlette):
                         playground=playground,
                         error_formater=error_formater,
                         graphql_middleware=graphql_middleware,
+                        graphql_middleware_exclude=graphql_middleware_exclude,
                         context_builder=context_builder,
                     ),
                 ),
@@ -79,6 +82,7 @@ class ASGIApp:
         playground: bool = True,
         error_formater: ERROR_FORMATER = None,
         graphql_middleware: typing.Union[tuple, list, typing.Dict[str, list]] = None,
+        graphql_middleware_exclude: typing.List[str] = None,
         context_builder: typing.Callable = None,
     ) -> None:
         self.schema = schema
@@ -93,14 +97,14 @@ class ASGIApp:
                     'Query': graphql_middleware,
                     'Mutation': graphql_middleware,
                     'Subscription': graphql_middleware,
-                }
+                },
+                graphql_middleware_exclude,
             )
         elif isinstance(graphql_middleware, dict):
-            self.middleware_manager = MiddlewareManager(graphql_middleware)
+            self.middleware_manager = MiddlewareManager(graphql_middleware, graphql_middleware_exclude)
         else:
             raise TypeError(
-                'GraphQL ASGIApp only accept graphql_middleware: tuple, list, dict,'
-                f'not {type(graphql_middleware)}'
+                'GraphQL ASGIApp only accept graphql_middleware: tuple, list, dict,' f'not {type(graphql_middleware)}'
             )
 
         self.context_builder = context_builder
@@ -165,9 +169,7 @@ class ASGIApp:
                     status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 )
         else:
-            return PlainTextResponse(
-                'Method Not Allowed', status_code=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
+            return PlainTextResponse('Method Not Allowed', status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         try:
             query = data['query']
